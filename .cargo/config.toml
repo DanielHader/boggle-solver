@@ -1,0 +1,2 @@
+[env]
+DICTIONARY_FILE = "/usr/share/dict/american-english.txt"

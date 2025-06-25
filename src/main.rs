@@ -2,7 +2,12 @@ mod boggle;
 
 use boggle::Board;
 
+use std::env;
+
 fn main() {
+
+    let dict_file = env::var("DICTIONARY_FILE").unwrap();
+    println!("{:?}", dict_file);
 
     let cubes = vec![
         "E", "G", "T", "E",
