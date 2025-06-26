@@ -19,6 +19,7 @@ fn index_rc(index: usize, cols: usize) -> (usize, usize) {
     (index / cols, index % cols)
 }
 
+#[derive(Debug)]
 pub struct Dictionary {
 	trie: Trie<u8>,
 }
@@ -50,6 +51,12 @@ struct TraversalState {
     neighbor_offset_index: usize,
 }
 
+#[derive(Debug)]
+struct BoardIndex {
+	index: usize,
+	cols: usize,
+}
+
 /// The current state of a traversal through all word sequences in a Board
 #[derive(Debug)]
 pub struct Traversal<'a> {
@@ -59,19 +66,43 @@ pub struct Traversal<'a> {
     start_index: usize,
 
     board: &'a Board,
+	dict: &'a Dictionary
 }
 
 impl<'a> Traversal<'a> {
 
-    fn new(board: &'a Board) -> Self {
+    fn new(board: &'a Board, dict: &'a Dictionary) -> Self {
 		Traversal {
 			buffer: String::new(),
 			stack: Vec::new(),
 			visit_mask: vec![false; board.rows * board.cols],
 			start_index: 0,
-			board: board
+			board: board,
+			dict: dict,
 		}
     }
+
+	fn push(&mut self, index: usize) -> bool{
+		self.stack.push(
+			TraversalState {
+				current_index: index,
+				neighbor_offset_index: 0,
+			}
+		);
+
+		self.buffer += &*self.board.cubes[index];
+		self.visit_mask[index] = true;
+
+		true
+	}
+
+	fn pop(&mut self) {
+		let Some(stack_top) = self.stack.pop() else { return; };
+		let top_index = stack_top.current_index;
+
+		self.buffer.truncate(self.buffer.len() - self.board.cubes[top_index].len());
+		self.visit_mask[top_index] = false;
+	}
 
     pub fn next(&mut self) -> Option<String> {
 
@@ -86,17 +117,9 @@ impl<'a> Traversal<'a> {
 			if self.stack.len() == 0 {
 				if self.start_index == rows * cols { return None; }
 
-				self.stack.push(
-					TraversalState {
-						current_index: self.start_index,
-						neighbor_offset_index: 0,
-					}
-				);
-
-				self.buffer += &*self.board.cubes[self.start_index];
-				self.visit_mask[self.start_index] = true;
-				
+				self.push(self.start_index);
 				self.start_index += 1;
+
 				break;
 			} else {
 				let mut nbr_index: Option<usize> = None;
@@ -132,23 +155,11 @@ impl<'a> Traversal<'a> {
 				
 				match nbr_index {
 					Some(nbr_index) => { // found a valid neighbor
-						self.stack.push(
-							TraversalState {
-								current_index: nbr_index,
-								neighbor_offset_index: 0,
-							}
-						);
-
-						self.buffer += &*self.board.cubes[nbr_index];
-						self.visit_mask[nbr_index] = true;
+						self.push(nbr_index);
 						break;
 					},
 					None => { // no valid neighbors, pop and try again
-						let stack_top = self.stack.pop().unwrap();
-						let top_index = stack_top.current_index;
-
-						self.buffer.truncate(self.buffer.len() - self.board.cubes[top_index].len());
-						self.visit_mask[top_index] = false;
+						self.pop();
 					},
 				};
 			}
@@ -166,19 +177,19 @@ pub struct Board {
 
 impl Board {
     pub fn new(rows: usize, cols: usize, cubes: Vec<String>) -> Option<Board> {
-	if rows * cols != cubes.len() {
-	    None
-	} else {
-	    Some(Board {
-		rows: rows,
-		cols: cols,
-		cubes: cubes,
-	    })
-	}
+		if rows * cols != cubes.len() {
+			None
+		} else {
+			Some(Board {
+				rows: rows,
+				cols: cols,
+				cubes: cubes,
+			})
+		}
     }
     
-    pub fn traversal(&self) -> Traversal {
-	Traversal::new(self)
+    pub fn traversal<'a>(&'a self, dict: &'a Dictionary) -> Traversal<'a> {
+		Traversal::new(self, dict)
     }
 }
 

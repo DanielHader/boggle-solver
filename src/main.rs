@@ -22,12 +22,12 @@ fn main() {
     println!("Board position (1, 2) is: {}", board[(1, 2)]);
 
     let cubes_small = vec![
-        "A", "B",
-    	"C", "D",
+        "b", "s",
+    	"t", "a",
     ].iter().map(|&s| s.to_owned()).collect();
     let board_small = Board::new(2, 2, cubes_small).unwrap();
 
-    let mut traversal = board_small.traversal();
+    let mut traversal = board_small.traversal(&dict);
 
     while let Some(seq) = traversal.next() {
         println!("Next sequence in traversal is: {:?}", seq);
