@@ -1,5 +1,12 @@
 use std::ops::Index;
 
+use std::fs::File;
+use std::io::{self, BufRead};
+use std::path::Path;
+use std::env;
+
+use trie_rs::{Trie, TrieBuilder};
+
 #[inline(always)]
 fn rc_index(row: usize, col: usize, cols: usize) -> usize {
     // todo: deal with bounds
@@ -10,6 +17,31 @@ fn rc_index(row: usize, col: usize, cols: usize) -> usize {
 fn index_rc(index: usize, cols: usize) -> (usize, usize) {
     // todo: deal with bounds
     (index / cols, index % cols)
+}
+
+pub struct Dictionary {
+	trie: Trie<u8>,
+}
+
+impl Dictionary {
+
+	pub fn from_file<P>(filename: P) -> io::Result<Dictionary>
+	where P: AsRef<Path> {
+		let mut builder = TrieBuilder::new();
+		let file = File::open(filename)?;
+		for line in io::BufReader::new(file).lines().map_while(Result::ok) {
+			// TODO: validate or cull words here
+			builder.push(line.to_lowercase());
+		}
+
+		Ok(Dictionary {
+			trie: builder.build(),
+		})
+	}
+
+	pub fn contains(&self, word: &str) -> bool {
+		self.trie.exact_match(word)
+	}
 }
 
 #[derive(Debug)]
