@@ -12,10 +12,10 @@ fn main() {
     println!("dictionary contains \"apple\": {}", dict.contains("apple"));
 
     let cubes = vec![
-        "E", "G", "T", "E",
-        "Qu", "I", "N", "A",
-        "A", "P", "E", "S",
-        "C", "O", "R", "T",
+        "e", "g", "t", "e",
+        "qu", "i", "n", "a",
+        "a", "p", "e", "s",
+        "c", "o", "r", "t",
     ].iter().map(|&s| s.to_owned()).collect();
     let board = Board::new(4, 4, cubes).unwrap();
 
@@ -27,7 +27,7 @@ fn main() {
     ].iter().map(|&s| s.to_owned()).collect();
     let board_small = Board::new(2, 2, cubes_small).unwrap();
 
-    let mut traversal = board_small.traversal(&dict);
+    let mut traversal = board.traversal(&dict);
 
     while let Some(seq) = traversal.next() {
         println!("Next sequence in traversal is: {:?}", seq);

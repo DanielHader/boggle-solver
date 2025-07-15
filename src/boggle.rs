@@ -6,6 +6,7 @@ use std::path::Path;
 use std::env;
 
 use trie_rs::{Trie, TrieBuilder};
+use trie_rs::inc_search::{IncSearch, Position, Answer};
 
 #[inline(always)]
 fn rc_index(row: usize, col: usize, cols: usize) -> usize {
@@ -49,6 +50,7 @@ impl Dictionary {
 struct TraversalState {
     current_index: usize,
     neighbor_offset_index: usize,
+	trie_position: Position,
 }
 
 #[derive(Debug)]
@@ -66,7 +68,7 @@ pub struct Traversal<'a> {
     start_index: usize,
 
     board: &'a Board,
-	dict: &'a Dictionary
+	dict: &'a Dictionary,
 }
 
 impl<'a> Traversal<'a> {
@@ -82,18 +84,25 @@ impl<'a> Traversal<'a> {
 		}
     }
 
-	fn push(&mut self, index: usize) -> bool{
+	fn push(&mut self, index: usize, trie_position: Position) -> Option<Answer> {
+
+		let cube_str = &*self.board.cubes[index];
+
+		let mut inc_search = IncSearch::resume(&self.dict.trie.0, trie_position.clone());
+		let Ok(answer) = inc_search.query_until(cube_str) else { return None; };
+
 		self.stack.push(
 			TraversalState {
 				current_index: index,
 				neighbor_offset_index: 0,
+				trie_position: Position::from(inc_search),
 			}
 		);
 
-		self.buffer += &*self.board.cubes[index];
+		self.buffer += cube_str;
 		self.visit_mask[index] = true;
 
-		true
+		Some(answer)
 	}
 
 	fn pop(&mut self) {
@@ -117,10 +126,14 @@ impl<'a> Traversal<'a> {
 			if self.stack.len() == 0 {
 				if self.start_index == rows * cols { return None; }
 
-				self.push(self.start_index);
+				let old_index = self.start_index.clone();
 				self.start_index += 1;
-
-				break;
+				match self.push(old_index, Position::from(self.dict.trie.inc_search())) {
+					Some(Answer::Match) | Some(Answer::PrefixAndMatch) => {
+						return Some(self.buffer.clone());
+					},
+					Some(Answer::Prefix) | None => {},
+				};
 			} else {
 				let mut nbr_index: Option<usize> = None;
 				
@@ -140,7 +153,7 @@ impl<'a> Traversal<'a> {
 							top_rc.1 as i32 + nbr_offset.1,
 						);
 
-						// out of bounds, todo: check biunds when converting to i32
+						// out of bounds, todo: check bounds when converting to i32
 						if nbr_rc.0 < 0 || nbr_rc.1 < 0 || nbr_rc.0 >= rows as i32 || nbr_rc.1 >= cols as i32 {
 							continue;
 						}
@@ -155,16 +168,24 @@ impl<'a> Traversal<'a> {
 				
 				match nbr_index {
 					Some(nbr_index) => { // found a valid neighbor
-						self.push(nbr_index);
-						break;
+						let stack_top = self.stack.last().unwrap();
+
+						match self.push(nbr_index, stack_top.trie_position.clone()) {
+							Some(Answer::Match) | Some(Answer::PrefixAndMatch) => {
+								return Some(self.buffer.clone());
+							},
+							Some(Answer::Prefix) | None => {},
+						};
+						// self.push(nbr_index);
+						// break;
 					},
 					None => { // no valid neighbors, pop and try again
 						self.pop();
 					},
 				};
 			}
-		}
-		Some(self.buffer.clone())
+		};
+		//Some(self.buffer.clone())
     }
 }
 
