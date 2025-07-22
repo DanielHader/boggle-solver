@@ -44,6 +44,10 @@ impl Dictionary {
 	pub fn contains(&self, word: &str) -> bool {
 		self.trie.exact_match(word)
 	}
+
+	pub fn len(self) -> usize {
+		self.trie.iter().collect::<Vec<String>>().len()
+	}
 }
 
 #[derive(Debug)]
